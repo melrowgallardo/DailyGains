@@ -142,40 +142,41 @@ class AudioSynthesizer {
     const now = this.ctx.currentTime;
 
     switch (soundName) {
+      case 'cyber-beep':
       case 'cyber-siren': {
-        // High-tech alternating frequency siren
+        // High-tech alternating frequency siren or rapid cyber beep
         for (let i = 0; i < 4; i++) {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
-          const start = now + i * 0.3;
+          const start = now + i * 0.12;
 
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(600, start);
-          osc.frequency.linearRampToValueAtTime(1400, start + 0.15);
-          osc.frequency.linearRampToValueAtTime(600, start + 0.3);
+          osc.frequency.setValueAtTime(800, start);
+          osc.frequency.linearRampToValueAtTime(1400, start + 0.06);
 
-          gain.gain.setValueAtTime(0.15, start);
-          gain.gain.exponentialRampToValueAtTime(0.01, start + 0.29);
+          gain.gain.setValueAtTime(0.12, start);
+          gain.gain.exponentialRampToValueAtTime(0.01, start + 0.1);
 
           osc.connect(gain);
           gain.connect(this.ctx.destination);
           osc.start(start);
-          osc.stop(start + 0.3);
+          osc.stop(start + 0.1);
         }
         break;
       }
 
+      case 'digital-alarm':
       case 'pulse-alarm': {
-        // Rapid cardiac high-alert pulse
-        for (let i = 0; i < 6; i++) {
+        // Rapid digital alert pulses
+        for (let i = 0; i < 5; i++) {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
-          const start = now + i * 0.15;
+          const start = now + i * 0.14;
 
           osc.type = 'square';
           osc.frequency.setValueAtTime(950, start);
 
-          gain.gain.setValueAtTime(0.12, start);
+          gain.gain.setValueAtTime(0.1, start);
           gain.gain.exponentialRampToValueAtTime(0.001, start + 0.08);
 
           osc.connect(gain);
@@ -183,6 +184,29 @@ class AudioSynthesizer {
           osc.start(start);
           osc.stop(start + 0.09);
         }
+        break;
+      }
+
+      case 'modern-chime':
+      case 'quantum-ping': {
+        // Gentle modern crystal chime (ascending dual tone)
+        const notes = [587.33, 880, 1174.66]; // D5, A5, D6
+        notes.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const start = now + idx * 0.09;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, start);
+
+          gain.gain.setValueAtTime(0.15, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.45);
+        });
         break;
       }
 

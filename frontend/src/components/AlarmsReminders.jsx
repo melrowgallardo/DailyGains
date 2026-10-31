@@ -82,7 +82,8 @@ export default function AlarmsReminders({
       reminders.forEach((r) => {
         if (!r.is_active) return;
         const rDays = typeof r.days === 'string' ? r.days.split(',') : (r.days || []);
-        if (rDays.includes(currentDay) && r.time === currentTimeStr) {
+        const rTime = r.reminder_time || r.time;
+        if (rDays.includes(currentDay) && rTime === currentTimeStr) {
           lastCheckedMinute = currentTimeStr;
           triggerAlarmAlert(r);
         }
@@ -134,8 +135,8 @@ export default function AlarmsReminders({
   const openEditForm = (rem) => {
     audio.playClick();
     setEditingId(rem.id);
-    setTitle(rem.title);
-    setTime(rem.time);
+    setTitle(rem.exercise_name || rem.title || 'Workout Protocol');
+    setTime(rem.reminder_time || rem.time || '08:00');
     const parsedDays = typeof rem.days === 'string' ? rem.days.split(',') : (rem.days || ['Mon', 'Tue', 'Wed']);
     setSelectedDays(parsedDays);
     setSound(rem.sound || 'cyber-siren');
@@ -149,6 +150,8 @@ export default function AlarmsReminders({
 
     await saveReminder({
       id: editingId,
+      exercise_name: title.trim(),
+      reminder_time: time,
       title: title.trim(),
       time,
       days: selectedDays.join(','),
@@ -291,7 +294,7 @@ export default function AlarmsReminders({
                         lineHeight: 1,
                         color: isActive ? 'var(--cyber-orange)' : 'var(--text-muted)'
                       }}>
-                        {rem.time}
+                        {rem.reminder_time || rem.time}
                       </div>
 
                       <div className="font-tech" style={{
@@ -300,7 +303,7 @@ export default function AlarmsReminders({
                         color: 'var(--text-main)',
                         marginTop: '4px'
                       }}>
-                        {rem.title}
+                        {rem.exercise_name || rem.title}
                       </div>
 
                       {/* Day Badges */}

@@ -22,6 +22,8 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [exercises, setExercises] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [userMetrics, setUserMetrics] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Quick Log Modal State
@@ -45,16 +47,26 @@ export default function App() {
     const statusResult = await api.checkConnection();
     setIsOnline(statusResult.online);
 
-    // 2. Load exercises, logs, and reminders
-    const [fetchedExercises, fetchedLogs, fetchedReminders] = await Promise.all([
+    // 2. Load exercises, logs, reminders, user metrics, and profile
+    const [fetchedExercises, fetchedLogs, fetchedReminders, fetchedMetrics, fetchedProfile] = await Promise.all([
       api.getExercises(),
       api.getWorkoutLogs(150),
-      api.getReminders()
+      api.getReminders(),
+      api.getUserMetrics(),
+      api.getUserProfile()
     ]);
 
     setExercises(fetchedExercises);
     setLogs(fetchedLogs);
     setReminders(fetchedReminders);
+    setUserMetrics(fetchedMetrics);
+    setUserProfile(fetchedProfile);
+
+    if (fetchedProfile && fetchedProfile.sound_enabled !== undefined) {
+      const isMuted = Number(fetchedProfile.sound_enabled) === 0;
+      setSoundMuted(isMuted);
+      audio.setMuted(isMuted);
+    }
     setLoading(false);
   };
 
@@ -111,6 +123,24 @@ export default function App() {
     setReminders(prev => prev.filter(r => Number(r.id) !== Number(id)));
   };
 
+  // Handlers for User Metrics
+  const handleSaveUserMetrics = async (metricsData) => {
+    const saved = await api.saveUserMetrics(metricsData);
+    if (saved) {
+      setUserMetrics(saved);
+    }
+    return saved;
+  };
+
+  // Handlers for User Profile
+  const handleSaveUserProfile = async (profileData) => {
+    const saved = await api.saveUserProfile(profileData);
+    if (saved) {
+      setUserProfile(saved);
+    }
+    return saved;
+  };
+
   // Modal controls
   const openLogModal = (exercise = null) => {
     setModalExercise(exercise);
@@ -142,6 +172,13 @@ export default function App() {
           <Dashboard
             logs={logs}
             exercises={exercises}
+            reminders={reminders}
+            saveReminder={handleSaveReminder}
+            deleteReminder={handleDeleteReminder}
+            userMetrics={userMetrics}
+            saveUserMetrics={handleSaveUserMetrics}
+            userProfile={userProfile}
+            saveUserProfile={handleSaveUserProfile}
             openLogModal={openLogModal}
             setActiveTab={setActiveTab}
             deleteLog={handleDeleteLog}
@@ -182,55 +219,48 @@ export default function App() {
 
         {activeTab === 'settings' && (
           <Settings
-            isOnline={isOnline}
-            setIsOnline={setIsOnline}
+            theme={theme}
+            setTheme={setTheme}
+            toggleTheme={toggleTheme}
+            soundMuted={soundMuted}
+            setSoundMuted={setSoundMuted}
             refreshAllData={loadInitialData}
-            logs={logs}
-            exercises={exercises}
-            reminders={reminders}
+            userProfile={userProfile}
+            onProfileUpdated={(updated) => {
+              setUserProfile(updated);
+            }}
           />
         )}
       </main>
 
-      {/* Futuristic Cyber Footer */}
+      {/* Minimalist Modern Footer */}
       <footer style={{
         marginTop: 'auto',
         borderTop: '1px solid var(--border-subtle)',
         background: 'var(--bg-card)',
-        padding: '24px 0',
-        backdropFilter: 'blur(10px)'
+        padding: '18px 0',
+        backdropFilter: 'blur(8px)'
       }}>
         <div className="container-hud" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '14px',
+          gap: '12px',
           paddingTop: 0,
           paddingBottom: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              border: '1px solid var(--cyber-cyan)'
-            }}>
-              <img src="/logo.jpg" alt="DailyGains" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </div>
-            <div>
-              <span className="font-display" style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--cyber-cyan)' }}>
-                DAILYGAINS // CYBERTECH HUD
-              </span>
-              <span className="font-tech" style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginLeft: '8px' }}>
-                BIOMETRIC WORKOUT MONITORING SYSTEM
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+              Daily<span style={{ color: 'var(--accent-cyan)' }}>Gains</span>
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              • Modern Fitness Tracker & Routine Manager
+            </span>
           </div>
 
-          <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-            STATUS: {isOnline ? 'MYSQL CONNECTED [PORT 80/3306]' : 'LOCAL REPOSITORY MODE'} • REST API V2.0.0
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Status: {isOnline ? 'Connected to MySQL Database' : 'Local Storage Mode'}
           </div>
         </div>
       </footer>

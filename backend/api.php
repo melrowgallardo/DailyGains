@@ -5,6 +5,7 @@
  * 
  * Supports: GET, POST, DELETE, OPTIONS
  * Default DB: dailygains (Auto-created if absent)
+ * Authentication: None (Open Cybertech Local/Intranet Access)
  */
 
 // Enable error logging while returning clean JSON
@@ -69,7 +70,7 @@ try {
 }
 
 function initDatabaseTables($pdo) {
-    // Exercises table
+    // 1. Exercises table
     $pdo->exec("CREATE TABLE IF NOT EXISTS `exercises` (
         `id` INT AUTO_INCREMENT PRIMARY KEY,
         `name` VARCHAR(100) NOT NULL,
@@ -81,7 +82,7 @@ function initDatabaseTables($pdo) {
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    // Workout logs table
+    // 2. Workout logs table
     $pdo->exec("CREATE TABLE IF NOT EXISTS `workout_logs` (
         `id` INT AUTO_INCREMENT PRIMARY KEY,
         `exercise_id` INT NULL,
@@ -99,43 +100,107 @@ function initDatabaseTables($pdo) {
         INDEX `idx_logged_at` (`logged_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    // Reminders table
+    // 3. Reminders table (id, exercise_name, duration_value, duration_unit, weeks_duration, is_today_only, target_date, reminder_time, days_of_week, is_active, created_at)
     $pdo->exec("CREATE TABLE IF NOT EXISTS `reminders` (
         `id` INT AUTO_INCREMENT PRIMARY KEY,
-        `title` VARCHAR(100) NOT NULL DEFAULT 'Cyber Protocol Activation',
-        `time` VARCHAR(10) NOT NULL DEFAULT '07:00',
-        `days` VARCHAR(100) NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri',
-        `sound` VARCHAR(50) NOT NULL DEFAULT 'cyber-siren',
+        `exercise_name` VARCHAR(100) NOT NULL DEFAULT 'Workout Protocol',
+        `duration_value` INT NOT NULL DEFAULT 30,
+        `duration_unit` VARCHAR(20) NOT NULL DEFAULT 'minutes',
+        `weeks_duration` INT NOT NULL DEFAULT 4,
+        `is_today_only` TINYINT(1) NOT NULL DEFAULT 0,
+        `target_date` DATE NULL,
+        `reminder_time` VARCHAR(10) NOT NULL DEFAULT '08:00',
+        `days_of_week` VARCHAR(100) NOT NULL DEFAULT 'Mon,Wed,Fri',
         `is_active` TINYINT(1) NOT NULL DEFAULT 1,
         `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    // Seed default cyber exercises if empty
-    $chk = $pdo->query("SELECT COUNT(*) as cnt FROM `exercises`")->fetch();
-    if ($chk && (int)$chk['cnt'] === 0) {
-        $seedStmt = $pdo->prepare("INSERT INTO `exercises` (`name`, `category`, `target_muscle`, `equipment`, `icon`, `description`) VALUES (?, ?, ?, ?, ?, ?)");
-        $seeds = [
-            ['Quantum Bench Press', 'Strength', 'Chest', 'Barbell', 'dumbbell', 'Heavy kinetic chest pressing for pectoral fiber synthesis.'],
-            ['Cyber Deadlift', 'Powerlifting', 'Back', 'Barbell', 'zap', 'Posterior chain recruitment and spinal stabilizer overload.'],
-            ['Overclock Squats', 'Strength', 'Legs', 'Barbell', 'activity', 'High-voltage quadricep and glute hypertrophy activation.'],
-            ['Neural Lat Pulldowns', 'Hypertrophy', 'Back', 'Cable', 'trending-up', 'Targeted lats latissimus dorsi mechanical contraction.'],
-            ['Bionic Bicep Curls', 'Isolation', 'Arms', 'Dumbbell', 'shield', 'Peak bicep tension with alternating rotation lock.'],
-            ['Tricep Plasma Pushdowns', 'Isolation', 'Arms', 'Cable', 'zap', 'Lockout tricep horseshoe development.'],
-            ['Plasma Shoulder Press', 'Hypertrophy', 'Shoulders', 'Dumbbell', 'dumbbell', 'Deltoid kinetic press for cyber-silhouette width.'],
-            ['Core Overdrive Planks', 'Endurance', 'Core', 'Bodyweight', 'shield', 'Isometric abdominal wall stabilizer endurance test.'],
-            ['Hyperdrive HIIT Sprints', 'Cardio', 'Cardio', 'Treadmill', 'flame', 'Maximum VO2 surge protocol for mitochondrial acceleration.'],
-            ['Titan Leg Press', 'Hypertrophy', 'Legs', 'Machine', 'activity', 'High-load closed kinetic chain leg press.']
-        ];
-        foreach ($seeds as $s) {
-            $seedStmt->execute($s);
+    // Migration check for reminders table if upgraded from legacy schema
+    try {
+        $colsStmt = $pdo->query("SHOW COLUMNS FROM `reminders`");
+        $cols = $colsStmt->fetchAll(PDO::FETCH_COLUMN, 0);
+
+        if (!in_array('exercise_name', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `exercise_name` VARCHAR(100) NOT NULL DEFAULT 'Workout Protocol' AFTER `id`");
+            if (in_array('title', $cols)) {
+                $pdo->exec("UPDATE `reminders` SET `exercise_name` = `title` WHERE `title` IS NOT NULL AND `title` != ''");
+            }
         }
+        if (!in_array('duration_value', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `duration_value` INT NOT NULL DEFAULT 30 AFTER `exercise_name`");
+        }
+        if (!in_array('duration_unit', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `duration_unit` VARCHAR(20) NOT NULL DEFAULT 'minutes' AFTER `duration_value`");
+        }
+        if (!in_array('weeks_duration', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `weeks_duration` INT NOT NULL DEFAULT 4 AFTER `duration_unit`");
+        }
+        if (!in_array('is_today_only', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `is_today_only` TINYINT(1) NOT NULL DEFAULT 0 AFTER `weeks_duration`");
+        }
+        if (!in_array('target_date', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `target_date` DATE NULL AFTER `is_today_only`");
+        }
+        if (!in_array('reminder_time', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `reminder_time` VARCHAR(10) NOT NULL DEFAULT '08:00' AFTER `target_date`");
+            if (in_array('time', $cols)) {
+                $pdo->exec("UPDATE `reminders` SET `reminder_time` = `time` WHERE `time` IS NOT NULL AND `time` != ''");
+            }
+        }
+        if (!in_array('days_of_week', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `days_of_week` VARCHAR(100) NOT NULL DEFAULT 'Mon,Wed,Fri' AFTER `reminder_time`");
+            if (in_array('days', $cols)) {
+                $pdo->exec("UPDATE `reminders` SET `days_of_week` = `days` WHERE `days` IS NOT NULL AND `days` != ''");
+            }
+        }
+        if (!in_array('is_active', $cols)) {
+            $pdo->exec("ALTER TABLE `reminders` ADD COLUMN `is_active` TINYINT(1) NOT NULL DEFAULT 1 AFTER `days_of_week`");
+        }
+    } catch (Exception $e) {
+        // Table created fresh or migration not needed
     }
 
-    // Seed default reminder if empty
-    $chkRem = $pdo->query("SELECT COUNT(*) as cnt FROM `reminders`")->fetch();
-    if ($chkRem && (int)$chkRem['cnt'] === 0) {
-        $pdo->exec("INSERT INTO `reminders` (`title`, `time`, `days`, `sound`, `is_active`) VALUES ('Morning Hypertrophy Protocol', '06:30', 'Mon,Tue,Wed,Thu,Fri', 'cyber-siren', 1)");
-    }
+    // 4. User Metrics & BMI table (id, age, height_cm, weight_kg, bmi_value, bmi_status, updated_at)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `user_metrics` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `age` INT NOT NULL DEFAULT 25,
+        `height_cm` DECIMAL(6,2) NOT NULL DEFAULT 175.00,
+        `weight_kg` DECIMAL(6,2) NOT NULL DEFAULT 70.00,
+        `bmi_value` DECIMAL(4,1) NOT NULL DEFAULT 22.9,
+        `bmi_status` VARCHAR(50) NOT NULL DEFAULT 'Normal',
+        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // 5. User Profile & App Preferences table
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `user_profile` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `user_name` VARCHAR(100) NOT NULL DEFAULT 'Athlete',
+        `age` INT NOT NULL DEFAULT 25,
+        `fitness_goal` VARCHAR(100) NOT NULL DEFAULT 'Muscle Gain',
+        `preferred_unit` VARCHAR(20) NOT NULL DEFAULT 'metric',
+        `sound_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+        `sound_type` VARCHAR(50) NOT NULL DEFAULT 'modern-chime',
+        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Dynamic schema migrations for existing tables
+    try {
+        $metricCols = $pdo->query("DESCRIBE `user_metrics`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('age', $metricCols)) {
+            $pdo->exec("ALTER TABLE `user_metrics` ADD COLUMN `age` INT NOT NULL DEFAULT 25 AFTER `id`");
+        }
+    } catch (Exception $e) {}
+
+    try {
+        $profileCols = $pdo->query("DESCRIBE `user_profile`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('age', $profileCols)) {
+            $pdo->exec("ALTER TABLE `user_profile` ADD COLUMN `age` INT NOT NULL DEFAULT 25 AFTER `user_name`");
+        }
+    } catch (Exception $e) {}
+
+    // NOTE: Automatic sample data seeding has been disabled upon table initialization.
+    // All tables (exercises, reminders, workout_logs, user_metrics, user_profile)
+    // are created empty (CREATE TABLE IF NOT EXISTS) without auto-populating initial rows.
 }
 
 // Parse request parameters and body
@@ -159,10 +224,11 @@ switch ($action) {
             $exCount = $pdo->query("SELECT COUNT(*) as c FROM `exercises`")->fetch()['c'];
             $logCount = $pdo->query("SELECT COUNT(*) as c FROM `workout_logs`")->fetch()['c'];
             $remCount = $pdo->query("SELECT COUNT(*) as c FROM `reminders`")->fetch()['c'];
+            $metCount = $pdo->query("SELECT COUNT(*) as c FROM `user_metrics`")->fetch()['c'];
 
             sendResponse('success', [
                 'api' => 'DailyGains Cybertech REST API',
-                'version' => '2.0.0',
+                'version' => '2.1.0',
                 'connected' => true,
                 'database' => $dbName,
                 'php_version' => PHP_VERSION,
@@ -170,7 +236,8 @@ switch ($action) {
                 'counts' => [
                     'exercises' => (int)$exCount,
                     'logs' => (int)$logCount,
-                    'reminders' => (int)$remCount
+                    'reminders' => (int)$remCount,
+                    'user_metrics' => (int)$metCount
                 ]
             ], 'API and MySQL database connected successfully');
         } catch (Exception $e) {
@@ -184,7 +251,10 @@ switch ($action) {
     case 'exercises':
         if ($method === 'GET') {
             $stmt = $pdo->query("SELECT * FROM `exercises` ORDER BY `name` ASC");
-            $exercises = $stmt->fetchAll();
+            $exercises = $stmt ? $stmt->fetchAll() : [];
+            if (!is_array($exercises)) {
+                $exercises = [];
+            }
             sendResponse('success', $exercises, 'Exercises retrieved');
         } 
         elseif ($method === 'POST') {
@@ -275,34 +345,90 @@ switch ($action) {
 
     // -------------------------------------------------------------
     // DAILY ALARMS & PROTOCOL REMINDERS
+    // Schema: id, exercise_name, duration_value, duration_unit, weeks_duration,
+    //         is_today_only, target_date, reminder_time, days_of_week, is_active, created_at
     // -------------------------------------------------------------
     case 'reminders':
         if ($method === 'GET') {
-            $stmt = $pdo->query("SELECT * FROM `reminders` ORDER BY `time` ASC");
-            $reminders = $stmt->fetchAll();
+            $stmt = $pdo->query("SELECT `id`, `exercise_name`, `duration_value`, `duration_unit`, `weeks_duration`,
+                                        `is_today_only`, `target_date`, `reminder_time`, `days_of_week`, `is_active`, `created_at`,
+                                        `days_of_week` AS `days`, `exercise_name` AS `title`, `reminder_time` AS `time`
+                                 FROM `reminders` 
+                                 ORDER BY `reminder_time` ASC, `id` ASC");
+            $reminders = $stmt ? $stmt->fetchAll() : [];
+            if (!is_array($reminders)) {
+                $reminders = [];
+            }
+            foreach ($reminders as &$r) {
+                $r['duration_value'] = (int)($r['duration_value'] ?? 30);
+                $r['weeks_duration'] = (int)($r['weeks_duration'] ?? 4);
+                $r['is_today_only'] = (int)(bool)($r['is_today_only'] ?? 0);
+                $r['is_active'] = (int)(bool)($r['is_active'] ?? 1);
+            }
+            unset($r);
             sendResponse('success', $reminders, 'Reminders retrieved');
         } 
         elseif ($method === 'POST') {
             $id = !empty($inputData['id']) ? (int)$inputData['id'] : null;
-            $title = trim($inputData['title'] ?? 'Cyber Protocol Activation');
-            $time = trim($inputData['time'] ?? '07:00');
-            $days = is_array($inputData['days'] ?? null) ? implode(',', $inputData['days']) : trim($inputData['days'] ?? 'Mon,Tue,Wed,Thu,Fri');
-            $sound = trim($inputData['sound'] ?? 'cyber-siren');
+            $exercise_name = trim($inputData['exercise_name'] ?? ($inputData['title'] ?? 'Workout Protocol'));
+            $duration_value = max(1, (int)($inputData['duration_value'] ?? 30));
+            $duration_unit = in_array(strtolower($inputData['duration_unit'] ?? 'minutes'), ['seconds', 'minutes']) ? strtolower($inputData['duration_unit']) : 'minutes';
+            $weeks_duration = max(1, (int)($inputData['weeks_duration'] ?? 4));
+            $is_today_only = !empty($inputData['is_today_only']) ? 1 : 0;
+            $target_date = !empty($inputData['target_date']) ? trim($inputData['target_date']) : ($is_today_only ? date('Y-m-d') : null);
+            $reminder_time = trim($inputData['reminder_time'] ?? ($inputData['time'] ?? '08:00'));
+            $days_of_week = is_array($inputData['days_of_week'] ?? null) 
+                ? implode(',', $inputData['days_of_week']) 
+                : trim($inputData['days_of_week'] ?? ($inputData['days'] ?? 'Mon,Wed,Fri'));
             $is_active = isset($inputData['is_active']) ? (int)(bool)$inputData['is_active'] : 1;
+
+            if (empty($exercise_name)) {
+                sendResponse('error', null, 'Exercise name is required', 400);
+            }
 
             if ($id) {
                 // Update existing reminder
-                $stmt = $pdo->prepare("UPDATE `reminders` SET `title` = ?, `time` = ?, `days` = ?, `sound` = ?, `is_active` = ? WHERE `id` = ?");
-                $stmt->execute([$title, $time, $days, $sound, $is_active, $id]);
-                $saved = $pdo->query("SELECT * FROM `reminders` WHERE `id` = {$id}")->fetch();
-                sendResponse('success', $saved, 'Reminder updated');
+                $stmt = $pdo->prepare("UPDATE `reminders` SET 
+                    `exercise_name` = ?, 
+                    `duration_value` = ?, 
+                    `duration_unit` = ?, 
+                    `weeks_duration` = ?, 
+                    `is_today_only` = ?, 
+                    `target_date` = ?, 
+                    `reminder_time` = ?, 
+                    `days_of_week` = ?, 
+                    `is_active` = ? 
+                    WHERE `id` = ?");
+                $stmt->execute([
+                    $exercise_name, $duration_value, $duration_unit, $weeks_duration,
+                    $is_today_only, $target_date, $reminder_time, $days_of_week, $is_active, $id
+                ]);
+                $saved = $pdo->query("SELECT *, `days_of_week` AS `days`, `exercise_name` AS `title`, `reminder_time` AS `time` FROM `reminders` WHERE `id` = {$id}")->fetch();
+                if ($saved) {
+                    $saved['duration_value'] = (int)$saved['duration_value'];
+                    $saved['weeks_duration'] = (int)$saved['weeks_duration'];
+                    $saved['is_today_only'] = (int)(bool)$saved['is_today_only'];
+                    $saved['is_active'] = (int)(bool)$saved['is_active'];
+                }
+                sendResponse('success', $saved, 'Reminder updated successfully');
             } else {
                 // Insert new reminder
-                $stmt = $pdo->prepare("INSERT INTO `reminders` (`title`, `time`, `days`, `sound`, `is_active`) VALUES (?, ?, ?, ?, ?)");
-                $stmt->execute([$title, $time, $days, $sound, $is_active]);
+                $stmt = $pdo->prepare("INSERT INTO `reminders` 
+                    (`exercise_name`, `duration_value`, `duration_unit`, `weeks_duration`, `is_today_only`, `target_date`, `reminder_time`, `days_of_week`, `is_active`) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $exercise_name, $duration_value, $duration_unit, $weeks_duration,
+                    $is_today_only, $target_date, $reminder_time, $days_of_week, $is_active
+                ]);
                 $newId = $pdo->lastInsertId();
-                $saved = $pdo->query("SELECT * FROM `reminders` WHERE `id` = {$newId}")->fetch();
-                sendResponse('success', $saved, 'Reminder created', 201);
+                $saved = $pdo->query("SELECT *, `days_of_week` AS `days`, `exercise_name` AS `title`, `reminder_time` AS `time` FROM `reminders` WHERE `id` = {$newId}")->fetch();
+                if ($saved) {
+                    $saved['duration_value'] = (int)$saved['duration_value'];
+                    $saved['weeks_duration'] = (int)$saved['weeks_duration'];
+                    $saved['is_today_only'] = (int)(bool)$saved['is_today_only'];
+                    $saved['is_active'] = (int)(bool)$saved['is_active'];
+                }
+                sendResponse('success', $saved, 'Reminder created successfully', 201);
             }
         } 
         elseif ($method === 'DELETE') {
@@ -313,6 +439,162 @@ switch ($action) {
             $stmt = $pdo->prepare("DELETE FROM `reminders` WHERE `id` = ?");
             $stmt->execute([$id]);
             sendResponse('success', ['id' => $id], 'Reminder deleted successfully');
+        }
+        break;
+
+    // -------------------------------------------------------------
+    // USER METRICS & BMI CALCULATOR
+    // Schema: id, age, height_cm, weight_kg, bmi_value, bmi_status, updated_at
+    // -------------------------------------------------------------
+    case 'user_metrics':
+        if ($method === 'GET') {
+            $stmt = $pdo->query("SELECT * FROM `user_metrics` ORDER BY `updated_at` DESC, `id` DESC LIMIT 1");
+            $metric = $stmt ? $stmt->fetch() : null;
+            if (!$metric) {
+                $metric = [
+                    'id' => null,
+                    'age' => 25,
+                    'height' => 175.00,
+                    'weight' => 70.00,
+                    'bmi' => 22.9,
+                    'height_cm' => 175.00,
+                    'weight_kg' => 70.00,
+                    'bmi_value' => 22.9,
+                    'bmi_status' => 'Normal',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+            } else {
+                $metric['age'] = (int)($metric['age'] ?? 25);
+                $metric['height_cm'] = (float)$metric['height_cm'];
+                $metric['weight_kg'] = (float)$metric['weight_kg'];
+                $metric['bmi_value'] = (float)$metric['bmi_value'];
+                $metric['height'] = $metric['height_cm'];
+                $metric['weight'] = $metric['weight_kg'];
+                $metric['bmi'] = $metric['bmi_value'];
+            }
+            sendResponse('success', $metric, 'User metrics retrieved');
+        } 
+        elseif ($method === 'POST') {
+            $age = max(10, min(120, (int)($inputData['age'] ?? 25)));
+            $height_cm = max(40.0, min(300.0, (float)($inputData['height_cm'] ?? ($inputData['height'] ?? 175.0))));
+            $weight_kg = max(20.0, min(500.0, (float)($inputData['weight_kg'] ?? ($inputData['weight'] ?? 70.0))));
+            
+            // Calculate BMI: weight (kg) / [height (m)]^2
+            $height_m = $height_cm / 100.0;
+            $calculatedBmi = round($weight_kg / ($height_m * $height_m), 1);
+            $bmi_value = isset($inputData['bmi_value']) 
+                ? round((float)$inputData['bmi_value'], 1) 
+                : (isset($inputData['bmi']) ? round((float)$inputData['bmi'], 1) : $calculatedBmi);
+
+            // Determine status
+            if (!empty($inputData['bmi_status'])) {
+                $bmi_status = trim($inputData['bmi_status']);
+            } else {
+                if ($bmi_value < 18.5) {
+                    $bmi_status = 'Underweight';
+                } elseif ($bmi_value < 25.0) {
+                    $bmi_status = 'Normal';
+                } elseif ($bmi_value < 30.0) {
+                    $bmi_status = 'Overweight';
+                } else {
+                    $bmi_status = 'Obese';
+                }
+            }
+
+            // Check if existing record exists
+            $existing = $pdo->query("SELECT `id` FROM `user_metrics` ORDER BY `id` ASC LIMIT 1")->fetch();
+
+            if ($existing) {
+                $id = (int)$existing['id'];
+                $stmt = $pdo->prepare("UPDATE `user_metrics` SET `age` = ?, `height_cm` = ?, `weight_kg` = ?, `bmi_value` = ?, `bmi_status` = ?, `updated_at` = NOW() WHERE `id` = ?");
+                $stmt->execute([$age, $height_cm, $weight_kg, $bmi_value, $bmi_status, $id]);
+                $saved = $pdo->query("SELECT * FROM `user_metrics` WHERE `id` = {$id}")->fetch();
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO `user_metrics` (`age`, `height_cm`, `weight_kg`, `bmi_value`, `bmi_status`) VALUES (?, ?, ?, ?, ?)");
+                $stmt->execute([$age, $height_cm, $weight_kg, $bmi_value, $bmi_status]);
+                $newId = $pdo->lastInsertId();
+                $saved = $pdo->query("SELECT * FROM `user_metrics` WHERE `id` = {$newId}")->fetch();
+            }
+
+            if ($saved) {
+                $saved['age'] = (int)($saved['age'] ?? $age);
+                $saved['height_cm'] = (float)$saved['height_cm'];
+                $saved['weight_kg'] = (float)$saved['weight_kg'];
+                $saved['bmi_value'] = (float)$saved['bmi_value'];
+                $saved['height'] = $saved['height_cm'];
+                $saved['weight'] = $saved['weight_kg'];
+                $saved['bmi'] = $saved['bmi_value'];
+            }
+
+            sendResponse('success', $saved, 'User metrics saved successfully', 200);
+        }
+        break;
+
+    // -------------------------------------------------------------
+    // USER PROFILE & BASIC APP SETTINGS
+    // Schema: id, user_name, age, fitness_goal, preferred_unit, sound_enabled, sound_type, updated_at
+    // -------------------------------------------------------------
+    case 'profile':
+        if ($method === 'GET') {
+            $stmt = $pdo->query("SELECT * FROM `user_profile` ORDER BY `updated_at` DESC, `id` DESC LIMIT 1");
+            $profile = $stmt ? $stmt->fetch() : null;
+            if (!$profile) {
+                $profile = [
+                    'id' => 1,
+                    'user_name' => 'John Melrow',
+                    'age' => 25,
+                    'fitness_goal' => 'Muscle Gain',
+                    'preferred_unit' => 'metric',
+                    'sound_enabled' => 1,
+                    'sound_type' => 'modern-chime',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+            } else {
+                $profile['age'] = (int)($profile['age'] ?? 25);
+                $profile['sound_enabled'] = (int)(bool)$profile['sound_enabled'];
+            }
+            sendResponse('success', $profile, 'User profile retrieved');
+        } 
+        elseif ($method === 'POST') {
+            $user_name = trim($inputData['user_name'] ?? 'Athlete');
+            $age = max(10, min(120, (int)($inputData['age'] ?? 25)));
+            $fitness_goal = trim($inputData['fitness_goal'] ?? 'Muscle Gain');
+            $preferred_unit = in_array(strtolower($inputData['preferred_unit'] ?? 'metric'), ['metric', 'imperial']) 
+                ? strtolower($inputData['preferred_unit']) 
+                : 'metric';
+            $sound_enabled = isset($inputData['sound_enabled']) ? (int)(bool)$inputData['sound_enabled'] : 1;
+            $sound_type = trim($inputData['sound_type'] ?? 'modern-chime');
+
+            $existing = $pdo->query("SELECT `id` FROM `user_profile` ORDER BY `id` ASC LIMIT 1")->fetch();
+
+            if ($existing) {
+                $id = (int)$existing['id'];
+                $stmt = $pdo->prepare("UPDATE `user_profile` SET 
+                    `user_name` = ?, 
+                    `age` = ?,
+                    `fitness_goal` = ?, 
+                    `preferred_unit` = ?, 
+                    `sound_enabled` = ?, 
+                    `sound_type` = ?, 
+                    `updated_at` = NOW() 
+                    WHERE `id` = ?");
+                $stmt->execute([$user_name, $age, $fitness_goal, $preferred_unit, $sound_enabled, $sound_type, $id]);
+                $saved = $pdo->query("SELECT * FROM `user_profile` WHERE `id` = {$id}")->fetch();
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO `user_profile` 
+                    (`user_name`, `age`, `fitness_goal`, `preferred_unit`, `sound_enabled`, `sound_type`) 
+                    VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$user_name, $age, $fitness_goal, $preferred_unit, $sound_enabled, $sound_type]);
+                $newId = $pdo->lastInsertId();
+                $saved = $pdo->query("SELECT * FROM `user_profile` WHERE `id` = {$newId}")->fetch();
+            }
+
+            if ($saved) {
+                $saved['age'] = (int)($saved['age'] ?? $age);
+                $saved['sound_enabled'] = (int)(bool)$saved['sound_enabled'];
+            }
+
+            sendResponse('success', $saved, 'User profile saved successfully', 200);
         }
         break;
 

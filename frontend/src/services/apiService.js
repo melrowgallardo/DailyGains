@@ -10,6 +10,8 @@ const STORAGE_KEYS = {
   LOCAL_LOGS: 'dailygains_local_logs',
   LOCAL_EXERCISES: 'dailygains_local_exercises',
   LOCAL_REMINDERS: 'dailygains_local_reminders',
+  LOCAL_METRICS: 'dailygains_local_metrics',
+  LOCAL_PROFILE: 'dailygains_local_profile',
   OFFLINE_MODE: 'dailygains_force_offline'
 };
 
@@ -27,11 +29,62 @@ export const DEFAULT_EXERCISES = [
   { id: 10, name: 'Titan Leg Press', category: 'Hypertrophy', target_muscle: 'Legs', equipment: 'Machine', icon: 'activity', description: 'High-load closed kinetic chain leg press.' }
 ];
 
-// Cyber starter reminders
+// Modern starter reminders
 export const DEFAULT_REMINDERS = [
-  { id: 1, title: 'Morning Hypertrophy Protocol', time: '06:30', days: 'Mon,Tue,Wed,Thu,Fri', sound: 'cyber-siren', is_active: 1 },
-  { id: 2, title: 'Post-Work Neural Overdrive', time: '18:00', days: 'Mon,Wed,Fri', sound: 'pulse-alarm', is_active: 1 }
+  {
+    id: 1,
+    exercise_name: 'Morning Cardio',
+    duration_value: 30,
+    duration_unit: 'minutes',
+    weeks_duration: 4,
+    is_today_only: 0,
+    target_date: new Date().toISOString().slice(0, 10),
+    reminder_time: '06:30',
+    days_of_week: 'Mon,Tue,Wed,Thu,Fri',
+    days: 'Mon,Tue,Wed,Thu,Fri',
+    title: 'Morning Cardio',
+    time: '06:30',
+    is_active: 1
+  },
+  {
+    id: 2,
+    exercise_name: 'Plank & Core Hold',
+    duration_value: 60,
+    duration_unit: 'seconds',
+    weeks_duration: 8,
+    is_today_only: 0,
+    target_date: new Date().toISOString().slice(0, 10),
+    reminder_time: '18:00',
+    days_of_week: 'Mon,Wed,Fri',
+    days: 'Mon,Wed,Fri',
+    title: 'Plank & Core Hold',
+    time: '18:00',
+    is_active: 1
+  }
 ];
+
+// Cyber default user metrics & BMI
+export const DEFAULT_USER_METRICS = {
+  id: 1,
+  age: 26,
+  height_cm: 175.0,
+  weight_kg: 72.0,
+  bmi_value: 23.5,
+  bmi_status: 'Normal',
+  updated_at: new Date().toISOString()
+};
+
+// Default User Profile & Preferences
+export const DEFAULT_PROFILE = {
+  id: 1,
+  user_name: 'John Melrow',
+  age: 26,
+  fitness_goal: 'Muscle Gain',
+  preferred_unit: 'metric',
+  sound_enabled: 1,
+  sound_type: 'modern-chime',
+  updated_at: new Date().toISOString()
+};
 
 // Cyber starter logs for instant rich analytics display
 const getInitialLogs = () => {
@@ -73,13 +126,19 @@ class ApiService {
 
   initLocalData() {
     if (!localStorage.getItem(STORAGE_KEYS.LOCAL_EXERCISES)) {
-      localStorage.setItem(STORAGE_KEYS.LOCAL_EXERCISES, JSON.stringify(DEFAULT_EXERCISES));
+      localStorage.setItem(STORAGE_KEYS.LOCAL_EXERCISES, JSON.stringify([]));
     }
     if (!localStorage.getItem(STORAGE_KEYS.LOCAL_REMINDERS)) {
-      localStorage.setItem(STORAGE_KEYS.LOCAL_REMINDERS, JSON.stringify(DEFAULT_REMINDERS));
+      localStorage.setItem(STORAGE_KEYS.LOCAL_REMINDERS, JSON.stringify([]));
     }
     if (!localStorage.getItem(STORAGE_KEYS.LOCAL_LOGS)) {
-      localStorage.setItem(STORAGE_KEYS.LOCAL_LOGS, JSON.stringify(getInitialLogs()));
+      localStorage.setItem(STORAGE_KEYS.LOCAL_LOGS, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.LOCAL_METRICS)) {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_METRICS, JSON.stringify(DEFAULT_USER_METRICS));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.LOCAL_PROFILE)) {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_PROFILE, JSON.stringify(DEFAULT_PROFILE));
     }
   }
 
@@ -126,7 +185,7 @@ class ApiService {
       const res = await fetch(`${this.apiUrl}?action=exercises`, { method: 'GET' });
       if (res.ok) {
         const json = await res.json();
-        if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
+        if (json.status === 'success' && Array.isArray(json.data)) {
           localStorage.setItem(STORAGE_KEYS.LOCAL_EXERCISES, JSON.stringify(json.data));
           return json.data;
         }
@@ -135,7 +194,7 @@ class ApiService {
       // Offline fallback
     }
     const local = localStorage.getItem(STORAGE_KEYS.LOCAL_EXERCISES);
-    return local ? JSON.parse(local) : DEFAULT_EXERCISES;
+    return local ? JSON.parse(local) : [];
   }
 
   async createExercise(exerciseData) {
@@ -190,11 +249,8 @@ class ApiService {
       if (res.ok) {
         const json = await res.json();
         if (json.status === 'success' && Array.isArray(json.data)) {
-          // If remote returned records, update local cache
-          if (json.data.length > 0) {
-            localStorage.setItem(STORAGE_KEYS.LOCAL_LOGS, JSON.stringify(json.data));
-            return json.data;
-          }
+          localStorage.setItem(STORAGE_KEYS.LOCAL_LOGS, JSON.stringify(json.data));
+          return json.data;
         }
       }
     } catch {
@@ -231,7 +287,6 @@ class ApiService {
       };
     }
 
-    // Always update local cache for instant UI response
     const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_LOGS) || '[]');
     const updated = [newLog, ...current];
     localStorage.setItem(STORAGE_KEYS.LOCAL_LOGS, JSON.stringify(updated));
@@ -254,15 +309,32 @@ class ApiService {
 
   // -----------------------------------------------------------------
   // DAILY ALARMS & REMINDERS API
+  // Schema: id, exercise_name, duration_value, duration_unit, weeks_duration,
+  //         is_today_only, target_date, reminder_time, days_of_week, is_active, created_at
   // -----------------------------------------------------------------
   async getReminders() {
     try {
       const res = await fetch(`${this.apiUrl}?action=reminders`, { method: 'GET' });
       if (res.ok) {
         const json = await res.json();
-        if (json.status === 'success' && Array.isArray(json.data) && json.data.length > 0) {
-          localStorage.setItem(STORAGE_KEYS.LOCAL_REMINDERS, JSON.stringify(json.data));
-          return json.data;
+        if (json.status === 'success' && Array.isArray(json.data)) {
+          const normalized = json.data.map(r => ({
+            ...r,
+            exercise_name: r.exercise_name || r.title || 'Workout Protocol',
+            duration_value: Number(r.duration_value) || 30,
+            duration_unit: r.duration_unit || 'minutes',
+            weeks_duration: Number(r.weeks_duration) || 4,
+            is_today_only: Boolean(Number(r.is_today_only)),
+            target_date: r.target_date || new Date().toISOString().slice(0, 10),
+            reminder_time: r.reminder_time || r.time || '08:00',
+            days_of_week: r.days_of_week || r.days || 'Mon,Wed,Fri',
+            days: r.days_of_week || r.days || 'Mon,Wed,Fri',
+            title: r.exercise_name || r.title || 'Workout Protocol',
+            time: r.reminder_time || r.time || '08:00',
+            is_active: r.is_active !== undefined ? Number(r.is_active) : 1
+          }));
+          localStorage.setItem(STORAGE_KEYS.LOCAL_REMINDERS, JSON.stringify(normalized));
+          return normalized;
         }
       }
     } catch {
@@ -270,21 +342,51 @@ class ApiService {
     }
 
     const local = localStorage.getItem(STORAGE_KEYS.LOCAL_REMINDERS);
-    return local ? JSON.parse(local) : DEFAULT_REMINDERS;
+    return local ? JSON.parse(local) : [];
   }
 
   async saveReminder(reminderData) {
+    const payload = {
+      ...reminderData,
+      exercise_name: reminderData.exercise_name || reminderData.title || 'Workout Protocol',
+      duration_value: Number(reminderData.duration_value) || 30,
+      duration_unit: reminderData.duration_unit || 'minutes',
+      weeks_duration: Number(reminderData.weeks_duration) || 4,
+      is_today_only: reminderData.is_today_only ? 1 : 0,
+      target_date: reminderData.target_date || (reminderData.is_today_only ? new Date().toISOString().slice(0, 10) : null),
+      reminder_time: reminderData.reminder_time || reminderData.time || '08:00',
+      days_of_week: reminderData.days_of_week || reminderData.days || 'Mon,Wed,Fri',
+      days: reminderData.days_of_week || reminderData.days || 'Mon,Wed,Fri',
+      title: reminderData.exercise_name || reminderData.title || 'Workout Protocol',
+      time: reminderData.reminder_time || reminderData.time || '08:00',
+      is_active: reminderData.is_active !== undefined ? Number(reminderData.is_active) : 1
+    };
+
     let saved = null;
     try {
       const res = await fetch(`${this.apiUrl}?action=reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reminderData)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const json = await res.json();
-        if (json.status === 'success') {
-          saved = json.data;
+        if (json.status === 'success' && json.data) {
+          saved = {
+            ...json.data,
+            exercise_name: json.data.exercise_name || payload.exercise_name,
+            duration_value: Number(json.data.duration_value || payload.duration_value),
+            duration_unit: json.data.duration_unit || payload.duration_unit,
+            weeks_duration: Number(json.data.weeks_duration || payload.weeks_duration),
+            is_today_only: Boolean(Number(json.data.is_today_only !== undefined ? json.data.is_today_only : payload.is_today_only)),
+            target_date: json.data.target_date || payload.target_date,
+            reminder_time: json.data.reminder_time || payload.reminder_time,
+            days_of_week: json.data.days_of_week || payload.days_of_week,
+            days: json.data.days_of_week || payload.days,
+            title: json.data.exercise_name || payload.exercise_name,
+            time: json.data.reminder_time || payload.reminder_time,
+            is_active: Number(json.data.is_active !== undefined ? json.data.is_active : payload.is_active)
+          };
         }
       }
     } catch {
@@ -300,16 +402,16 @@ class ApiService {
         current.push(saved);
       }
     } else {
-      if (reminderData.id) {
-        const idx = current.findIndex(r => Number(r.id) === Number(reminderData.id));
+      if (payload.id) {
+        const idx = current.findIndex(r => Number(r.id) === Number(payload.id));
         if (idx >= 0) {
-          current[idx] = { ...current[idx], ...reminderData };
+          current[idx] = { ...current[idx], ...payload };
           saved = current[idx];
         }
       } else {
         saved = {
           id: Date.now(),
-          ...reminderData,
+          ...payload,
           created_at: new Date().toISOString()
         };
         current.push(saved);
@@ -330,6 +432,143 @@ class ApiService {
     const current = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_REMINDERS) || '[]');
     const filtered = current.filter(r => Number(r.id) !== Number(id));
     localStorage.setItem(STORAGE_KEYS.LOCAL_REMINDERS, JSON.stringify(filtered));
+    return true;
+  }
+
+  // -----------------------------------------------------------------
+  // USER METRICS & BMI API
+  // Schema: id, height_cm, weight_kg, bmi_value, bmi_status, updated_at
+  // -----------------------------------------------------------------
+  async getUserMetrics() {
+    try {
+      const res = await fetch(`${this.apiUrl}?action=user_metrics`, { method: 'GET' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          localStorage.setItem(STORAGE_KEYS.LOCAL_METRICS, JSON.stringify(json.data));
+          return json.data;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    const local = localStorage.getItem(STORAGE_KEYS.LOCAL_METRICS);
+    return local ? JSON.parse(local) : DEFAULT_USER_METRICS;
+  }
+
+  async saveUserMetrics(metricsData) {
+    let saved = null;
+    const payload = {
+      ...metricsData,
+      age: Number(metricsData.age) || 25,
+      height_cm: Number(metricsData.height_cm || metricsData.height) || 175,
+      weight_kg: Number(metricsData.weight_kg || metricsData.weight) || 70,
+      bmi_value: Number(metricsData.bmi_value || metricsData.bmi) || 22.9,
+      height: Number(metricsData.height_cm || metricsData.height) || 175,
+      weight: Number(metricsData.weight_kg || metricsData.weight) || 70,
+      bmi: Number(metricsData.bmi_value || metricsData.bmi) || 22.9
+    };
+
+    try {
+      const res = await fetch(`${this.apiUrl}?action=user_metrics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          saved = json.data;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    if (!saved) {
+      saved = {
+        ...payload,
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    localStorage.setItem(STORAGE_KEYS.LOCAL_METRICS, JSON.stringify(saved));
+    return saved;
+  }
+
+  // -----------------------------------------------------------------
+  // USER PROFILE & BASIC APP SETTINGS API
+  // Schema: id, user_name, fitness_goal, preferred_unit, sound_enabled, sound_type, updated_at
+  // -----------------------------------------------------------------
+  async getUserProfile() {
+    try {
+      const res = await fetch(`${this.apiUrl}?action=profile`, { method: 'GET' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          const profile = {
+            ...json.data,
+            sound_enabled: Number(json.data.sound_enabled) !== 0 ? 1 : 0
+          };
+          localStorage.setItem(STORAGE_KEYS.LOCAL_PROFILE, JSON.stringify(profile));
+          return profile;
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    const local = localStorage.getItem(STORAGE_KEYS.LOCAL_PROFILE);
+    return local ? JSON.parse(local) : DEFAULT_PROFILE;
+  }
+
+  async saveUserProfile(profileData) {
+    let saved = null;
+    const payload = {
+      ...profileData,
+      sound_enabled: profileData.sound_enabled ? 1 : 0
+    };
+
+    try {
+      const res = await fetch(`${this.apiUrl}?action=profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'success' && json.data) {
+          saved = {
+            ...json.data,
+            sound_enabled: Number(json.data.sound_enabled) !== 0 ? 1 : 0
+          };
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    if (!saved) {
+      saved = {
+        ...payload,
+        id: payload.id || 1,
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    localStorage.setItem(STORAGE_KEYS.LOCAL_PROFILE, JSON.stringify(saved));
+    return saved;
+  }
+
+  // Clear local data / reset app back to initial defaults
+  resetAllData() {
+    localStorage.removeItem(STORAGE_KEYS.LOCAL_LOGS);
+    localStorage.removeItem(STORAGE_KEYS.LOCAL_REMINDERS);
+    localStorage.removeItem(STORAGE_KEYS.LOCAL_METRICS);
+    localStorage.removeItem(STORAGE_KEYS.LOCAL_PROFILE);
+    localStorage.removeItem(STORAGE_KEYS.LOCAL_EXERCISES);
+    this.initLocalData();
     return true;
   }
 

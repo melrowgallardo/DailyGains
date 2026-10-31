@@ -103,15 +103,29 @@ CREATE TABLE `workout_logs` (
     INDEX `idx_logged_at` (`logged_at`)
 );
 
--- 3. REMINDERS / PROTOCOLS
+-- 3. REMINDERS / PROTOCOL ALARMS
 CREATE TABLE `reminders` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `title` VARCHAR(100) NOT NULL DEFAULT 'Cyber Protocol Activation',
-    `time` VARCHAR(10) NOT NULL DEFAULT '07:00',
-    `days` VARCHAR(100) NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri',
-    `sound` VARCHAR(50) NOT NULL DEFAULT 'cyber-siren',
+    `exercise_name` VARCHAR(100) NOT NULL DEFAULT 'Workout Protocol',
+    `duration_value` INT NOT NULL DEFAULT 30,
+    `duration_unit` VARCHAR(20) NOT NULL DEFAULT 'minutes',
+    `weeks_duration` INT NOT NULL DEFAULT 4,
+    `is_today_only` TINYINT(1) NOT NULL DEFAULT 0,
+    `target_date` DATE NULL,
+    `reminder_time` VARCHAR(10) NOT NULL DEFAULT '08:00',
+    `days_of_week` VARCHAR(100) NOT NULL DEFAULT 'Mon,Wed,Fri',
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. USER METRICS & BMI
+CREATE TABLE `user_metrics` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `height_cm` DECIMAL(6,2) NOT NULL DEFAULT 175.00,
+    `weight_kg` DECIMAL(6,2) NOT NULL DEFAULT 70.00,
+    `bmi_value` DECIMAL(4,1) NOT NULL DEFAULT 22.9,
+    `bmi_status` VARCHAR(50) NOT NULL DEFAULT 'Normal',
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
 
@@ -128,7 +142,9 @@ CREATE TABLE `reminders` (
 | `GET` | `/api.php?action=logs` | `logs` | Retrieves logged workout executions ordered by date |
 | `POST` | `/api.php?action=logs` | `logs` | Records a new workout set execution |
 | `DELETE` | `/api.php?action=logs&id={id}` | `logs` | Deletes a workout execution record |
-| `GET` | `/api.php?action=reminders` | `reminders` | Retrieves all scheduled workout protocol alarms |
-| `POST` | `/api.php?action=reminders` | `reminders` | Creates or updates an alarm protocol |
-| `DELETE` | `/api.php?action=reminders&id={id}` | `reminders` | Deletes an alarm protocol |
+| `GET` | `/api.php?action=reminders` | `reminders` | Retrieves all scheduled workout protocol alarms (`exercise_name`, `reminder_time`, `days`, `is_active`) |
+| `POST` | `/api.php?action=reminders` | `reminders` | Creates or updates an exercise reminder protocol |
+| `DELETE` | `/api.php?action=reminders&id={id}` | `reminders` | Deletes a protocol reminder |
+| `GET` | `/api.php?action=user_metrics` | `user_metrics` | Retrieves the latest biometric morphometry and BMI calculations |
+| `POST` | `/api.php?action=user_metrics` | `user_metrics` | Saves/syncs user height, weight, BMI value, and BMI status |
 | `POST` | `/api.php?action=sync` | `sync` | Atomically bulk-syncs local buffer logs into MySQL |

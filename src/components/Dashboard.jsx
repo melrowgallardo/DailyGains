@@ -1,82 +1,153 @@
-import React from 'react';
-import { Play, Flame, Dumbbell, Zap, Plus, ArrowRight, Activity, Award } from './icons';
-import HeartRateHud from './widgets/HeartRateHud';
+import React, { useState, useEffect } from 'react';
+import { Dumbbell, Plus, ArrowRight, Zap, Flame, Calendar, Activity, Sparkles, User, Target } from './icons';
 import StopwatchTimer from './widgets/StopwatchTimer';
 import StreakCard from './widgets/StreakCard';
-import VolumeCalorieMeter from './widgets/VolumeCalorieMeter';
 import GainsBarChart from './widgets/GainsBarChart';
+import QuickWorkoutReminder from './widgets/QuickWorkoutReminder';
+import UserProfileBiometricCard from './widgets/UserProfileBiometricCard';
 import { audio } from '../services/audioService';
+import { programTracker } from '../services/programTrackerService';
 
 export default function Dashboard({ 
   logs = [], 
   exercises = [], 
+  reminders = [],
+  saveReminder,
+  deleteReminder,
+  userMetrics,
+  saveUserMetrics,
+  userProfile,
+  saveUserProfile,
   openLogModal, 
   setActiveTab,
-  deleteLog,
-  bpm,
-  setBpm
+  bpm = 125
 }) {
-  // Quick exercise launches
+  const [reminderPrefill, setReminderPrefill] = useState(null);
   const popularExercises = exercises.slice(0, 4);
 
+  // Program Routine Day State
+  const [programData, setProgramData] = useState(() => programTracker.getProgramData());
+
+  useEffect(() => {
+    const unsubscribe = programTracker.subscribe((updated) => {
+      setProgramData(updated);
+    });
+    const handleSync = (e) => {
+      if (e.detail) setProgramData(e.detail);
+    };
+    window.addEventListener('dailygains_program_changed', handleSync);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('dailygains_program_changed', handleSync);
+    };
+  }, []);
+
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  });
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-      {/* Hero Banner with Logo.jpg and Cyber Gym Aesthetics */}
-      <div className="cyber-panel cyber-corners" style={{
-        position: 'relative',
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 1. Minimalist Welcome Banner with Quick Stats & Smooth Action Buttons */}
+      <div className="cyber-panel" style={{
         padding: '24px 28px',
-        background: 'linear-gradient(135deg, rgba(10, 16, 36, 0.95) 0%, rgba(2, 6, 23, 0.9) 100%)',
-        border: '1px solid var(--border-active)',
-        boxShadow: '0 8px 32px rgba(0, 243, 255, 0.15)',
+        background: 'linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-subtle) 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '20px'
       }}>
-        {/* Left copy */}
-        <div style={{ flex: '1 1 360px', zIndex: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span className="cyber-badge badge-cyan font-mono">
-              SYSTEM STATUS: ARMED
+        {/* Left Information & Actions */}
+        <div style={{ flex: '1 1 360px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '3px 9px',
+              borderRadius: '9999px',
+              background: 'var(--accent-cyan-light)',
+              color: 'var(--accent-cyan)'
+            }}>
+              <Calendar size={13} />
+              <span>{formattedDate}</span>
             </span>
-            <span className="cyber-badge badge-orange font-mono">
-              OVERCLOCK READY
+
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '3px 9px',
+              borderRadius: '9999px',
+              background: 'var(--accent-blue-light)',
+              color: 'var(--accent-blue)'
+            }}>
+              <Activity size={13} />
+              <span>{logs.length} Total Workouts</span>
+            </span>
+
+            {/* Routine Day Progression Badge */}
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              padding: '3px 9px',
+              borderRadius: '9999px',
+              background: programData.phase.bgColor,
+              border: `1px solid ${programData.phase.borderColor}`,
+              color: programData.phase.color
+            }}>
+              <Target size={13} />
+              <span>{programData.phase.dayProgress} • {programData.phase.phaseName}</span>
             </span>
           </div>
 
-          <h1 className="font-display" style={{
-            fontSize: '2.1rem',
-            fontWeight: 900,
-            lineHeight: 1.15,
-            marginBottom: '8px',
-            color: 'var(--text-main)'
+          <h1 style={{
+            fontSize: '1.75rem',
+            fontWeight: 800,
+            lineHeight: 1.2,
+            margin: '0 0 6px',
+            color: 'var(--text-main)',
+            letterSpacing: '-0.02em'
           }}>
-            WELCOME TO <span style={{ color: 'var(--cyber-cyan)', textShadow: 'var(--shadow-neon-cyan)' }}>DAILYGAINS</span>
+            Welcome back, <span style={{ color: 'var(--accent-cyan)' }}>{userProfile?.user_name || 'Athlete'}</span>
           </h1>
 
-          <p className="font-tech" style={{
-            fontSize: '1.05rem',
+          <p style={{
+            fontSize: '0.95rem',
             color: 'var(--text-secondary)',
-            maxWidth: '560px',
-            marginBottom: '18px',
-            letterSpacing: '0.04em'
+            maxWidth: '520px',
+            margin: '0 0 18px',
+            lineHeight: 1.5
           }}>
-            Synchronize your biometric cardiac telemetry, track mechanical volume hypertrophy, and maintain uninterrupted protocol discipline.
+            Track your workout progress, monitor your biometrics, and stay consistent with daily routine reminders.
           </p>
 
-          {/* Quick Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Smooth Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => {
                 audio.playClick();
                 openLogModal();
               }}
-              className="cyber-btn cyber-btn-cyan font-display"
-              style={{ padding: '10px 20px' }}
+              className="cyber-btn cyber-btn-cyan"
+              style={{
+                padding: '9px 18px',
+                borderRadius: '10px',
+                fontWeight: 600
+              }}
             >
               <Plus size={16} />
-              <span>LOG WORKOUT SET</span>
+              <span>+ Log Workout</span>
             </button>
 
             <button
@@ -84,29 +155,33 @@ export default function Dashboard({
                 audio.playClick();
                 setActiveTab('tracker');
               }}
-              className="cyber-btn cyber-btn-ghost font-display"
-              style={{ padding: '10px 18px' }}
+              className="cyber-btn cyber-btn-ghost"
+              style={{
+                padding: '9px 16px',
+                borderRadius: '10px',
+                fontWeight: 600
+              }}
             >
               <Dumbbell size={16} />
-              <span>VIEW FULL PROTOCOL</span>
+              <span>View Workout Log</span>
             </button>
           </div>
         </div>
 
-        {/* Right Cyborg Logo Hero Showcase */}
+        {/* Right Thumbnail Showcase */}
         <div style={{
           position: 'relative',
-          width: '240px',
-          height: '140px',
-          borderRadius: '10px',
+          width: '180px',
+          height: '110px',
+          borderRadius: '14px',
           overflow: 'hidden',
-          border: '2px solid var(--cyber-orange)',
-          boxShadow: 'var(--shadow-neon-orange)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: 'var(--shadow-card)',
           flexShrink: 0
         }}>
           <img 
             src="/logo.jpg" 
-            alt="DailyGains Cyborg Mascot" 
+            alt="DailyGains Mascot" 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
           />
           <div style={{
@@ -115,75 +190,126 @@ export default function Dashboard({
             left: 0,
             right: 0,
             padding: '4px 8px',
-            background: 'linear-gradient(transparent, rgba(2, 6, 23, 0.95))',
+            background: 'linear-gradient(transparent, rgba(15, 23, 42, 0.9))',
             fontSize: '0.72rem',
-            fontFamily: 'var(--font-tech)',
-            fontWeight: 700,
-            color: 'var(--cyber-orange)',
+            fontWeight: 600,
+            color: '#ffffff',
             textAlign: 'center'
           }}>
-            BIOMETRIC CYBERCORE // ACTIVATED
+            Consistent Daily Progress
           </div>
         </div>
       </div>
 
-      {/* Primary Biometric & Time HUD Row (2 columns) */}
+      {/* 2. Top Row: User Profile & Biometrics Card (with Nested Recommendations) + Quick Workout Reminder Card */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
         gap: '20px'
       }}>
-        {/* Heart Rate HUD Meter */}
-        <HeartRateHud bpm={bpm} setBpm={setBpm} />
+        {/* User Profile & Biometrics Card with Live BMI, Quick Edit & Nested Recommendations */}
+        <UserProfileBiometricCard
+          userProfile={userProfile}
+          userMetrics={userMetrics}
+          onSaveMetrics={saveUserMetrics}
+          onSaveProfile={saveUserProfile}
+          onAddToReminder={(rec) => {
+            setReminderPrefill(rec);
+          }}
+          onStartWorkout={(rec) => {
+            openLogModal({
+              name: rec.name,
+              category: rec.category,
+              target_muscle: rec.target_muscle || rec.muscles || rec.category,
+              equipment: rec.equipment
+            });
+          }}
+        />
 
-        {/* Stopwatch Session Timer */}
-        <StopwatchTimer bpm={bpm} />
+        {/* Quick Workout Reminder Card */}
+        <QuickWorkoutReminder
+          exercises={exercises}
+          reminders={reminders}
+          onSaveReminder={saveReminder}
+          onDeleteReminder={deleteReminder}
+          setActiveTab={setActiveTab}
+          prefillData={reminderPrefill}
+        />
       </div>
 
-      {/* Progress & Consistency Telemetry Row (2 columns) */}
+      {/* 3. Operational Telemetry Row: Stopwatch & Weekly Streak Card */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
         gap: '20px'
       }}>
-        {/* Volume & Calories Gauge */}
-        <VolumeCalorieMeter logs={logs} />
-
-        {/* Cyber Streak & Discipline */}
+        <StopwatchTimer bpm={bpm} />
         <StreakCard logs={logs} />
       </div>
 
-      {/* 7-Day Gains Telemetry Bar Chart */}
+      {/* 4. 7-Day Gains Telemetry Bar Chart */}
       <GainsBarChart logs={logs} />
 
-      {/* Quick Launch Exercises Bar */}
-      <div className="cyber-panel" style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+      {/* 5. Quick Launch Exercises Bar */}
+      <div className="cyber-panel" style={{ padding: '20px 24px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '14px'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Zap size={18} style={{ color: 'var(--cyber-orange)' }} />
-            <span className="font-display" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-              QUICK LAUNCH EXERCISES
-            </span>
+            <Zap size={18} style={{ color: 'var(--accent-blue)' }} />
+            <h3 style={{
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              color: 'var(--text-main)',
+              margin: 0
+            }}>
+              Quick Launch Exercises
+            </h3>
           </div>
           <button
             onClick={() => {
               audio.playClick();
               setActiveTab('tracker');
             }}
-            className="cyber-btn cyber-btn-ghost cyber-btn-sm font-tech"
-            style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-cyan)',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
           >
-            <span>ALL EXERCISES</span>
-            <ArrowRight size={13} />
+            <span>All Exercises</span>
+            <ArrowRight size={14} />
           </button>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '12px'
-        }}>
-          {popularExercises.map((ex) => (
+        {popularExercises.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '24px 12px',
+            color: 'var(--text-muted)',
+            fontSize: '0.85rem',
+            background: 'var(--bg-input)',
+            borderRadius: '12px',
+            border: '1px dashed var(--border-subtle)'
+          }}>
+            No exercises registered yet. Click &quot;+ Add Workout&quot; or go to Tracker to log your first exercise!
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '12px'
+          }}>
+            {popularExercises.map((ex) => (
             <div
               key={ex.id}
               onClick={() => {
@@ -195,14 +321,14 @@ export default function Dashboard({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '12px 14px',
-                background: 'var(--bg-card-solid)',
+                background: 'var(--bg-input)',
                 border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
+                borderRadius: '12px',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.18s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'var(--cyber-cyan)';
+                e.currentTarget.style.borderColor = 'var(--accent-cyan)';
                 e.currentTarget.style.transform = 'translateY(-2px)';
               }}
               onMouseLeave={(e) => {
@@ -211,21 +337,35 @@ export default function Dashboard({
               }}
             >
               <div>
-                <div className="font-tech" style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-main)' }}>
                   {ex.name}
                 </div>
-                <div style={{ display: 'flex', gap: '6px', marginTop: '3px' }}>
-                  <span className="cyber-badge badge-cyan font-mono" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '9999px',
+                    background: 'var(--accent-cyan-light)',
+                    color: 'var(--accent-cyan)'
+                  }}>
                     {ex.target_muscle}
                   </span>
-                  <span className="cyber-badge badge-orange font-mono" style={{ fontSize: '0.65rem', padding: '1px 5px' }}>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '9999px',
+                    background: 'var(--accent-blue-light)',
+                    color: 'var(--accent-blue)'
+                  }}>
                     {ex.equipment}
                   </span>
                 </div>
               </div>
               <button 
                 className="cyber-btn cyber-btn-cyan cyber-btn-sm" 
-                style={{ width: '32px', height: '32px', padding: 0 }}
+                style={{ width: '32px', height: '32px', padding: 0, borderRadius: '8px' }}
                 title="Log this exercise"
               >
                 <Plus size={16} />
@@ -233,89 +373,6 @@ export default function Dashboard({
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Recent Execution Logs Quick View */}
-      <div className="cyber-panel" style={{ padding: '18px 20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} style={{ color: 'var(--cyber-cyan)' }} />
-            <span className="font-display" style={{ fontSize: '0.95rem', fontWeight: 800 }}>
-              RECENT WORKOUT EXECUTION LOGS
-            </span>
-          </div>
-          <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            LATEST {Math.min(logs.length, 5)} OF {logs.length} RECORDS
-          </span>
-        </div>
-
-        {logs.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>
-            <Dumbbell size={32} style={{ opacity: 0.4, marginBottom: '8px' }} />
-            <div className="font-tech" style={{ fontSize: '1rem' }}>NO WORKOUTS RECORDED YET</div>
-            <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>Hit the button below to record your first set!</div>
-            <button
-              onClick={() => openLogModal()}
-              className="cyber-btn cyber-btn-cyan font-display"
-              style={{ marginTop: '12px' }}
-            >
-              + LOG FIRST SET
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {logs.slice(0, 5).map((log) => (
-              <div
-                key={log.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 14px',
-                  background: 'var(--bg-card-solid)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: '6px',
-                  flexWrap: 'wrap',
-                  gap: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '6px',
-                    background: 'rgba(0, 243, 255, 0.1)',
-                    border: '1px solid rgba(0, 243, 255, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--cyber-cyan)'
-                  }}>
-                    <Dumbbell size={18} />
-                  </div>
-                  <div>
-                    <div className="font-tech" style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                      {log.exercise_name}
-                    </div>
-                    <div className="font-mono" style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
-                      {log.logged_at ? log.logged_at.slice(0, 16) : 'Just now'} • RPE {log.rpe || 8}/10
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="font-display" style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--cyber-cyan)' }}>
-                      {log.sets} SETS × {log.reps} REPS @ {log.weight} {log.weight_unit || 'kg'}
-                    </div>
-                    <div className="font-tech" style={{ fontSize: '0.75rem', color: 'var(--cyber-orange)' }}>
-                      {log.calories_burned || 0} KCAL • {log.duration_minutes || 0} MINS
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         )}
       </div>
     </div>

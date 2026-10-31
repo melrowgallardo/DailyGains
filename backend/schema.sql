@@ -1,6 +1,6 @@
 -- =====================================================================
 -- DailyGains Cybertech Gym Workout Monitoring Database Schema
--- Target: MySQL / MariaDB (XAMPP default localhost)
+-- Target: MySQL / MariaDB (XAMPP default localhost:3306)
 -- Database Name: dailygains
 -- =====================================================================
 
@@ -39,34 +39,47 @@ CREATE TABLE IF NOT EXISTS `workout_logs` (
     CONSTRAINT `fk_log_exercise` FOREIGN KEY (`exercise_id`) REFERENCES `exercises`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. REMINDERS / ALARMS TABLE
+-- 3. REMINDERS / PROTOCOL ALARMS TABLE
 CREATE TABLE IF NOT EXISTS `reminders` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `title` VARCHAR(100) NOT NULL DEFAULT 'Cyber Protocol Activation',
-    `time` VARCHAR(10) NOT NULL DEFAULT '07:00',
-    `days` VARCHAR(100) NOT NULL DEFAULT 'Mon,Tue,Wed,Thu,Fri',
-    `sound` VARCHAR(50) NOT NULL DEFAULT 'cyber-siren',
+    `exercise_name` VARCHAR(100) NOT NULL DEFAULT 'Workout Protocol',
+    `duration_value` INT NOT NULL DEFAULT 30,
+    `duration_unit` VARCHAR(20) NOT NULL DEFAULT 'minutes',
+    `weeks_duration` INT NOT NULL DEFAULT 4,
+    `is_today_only` TINYINT(1) NOT NULL DEFAULT 0,
+    `target_date` DATE NULL,
+    `reminder_time` VARCHAR(10) NOT NULL DEFAULT '08:00',
+    `days_of_week` VARCHAR(100) NOT NULL DEFAULT 'Mon,Wed,Fri',
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. SEED DATA: CYBERTECH EXERCISE CATALOG
-INSERT INTO `exercises` (`name`, `category`, `target_muscle`, `equipment`, `icon`, `description`) 
-SELECT * FROM (
-    SELECT 'Quantum Bench Press', 'Strength', 'Chest', 'Barbell', 'dumbbell', 'Heavy kinetic chest pressing for pectoral fiber synthesis.' UNION ALL
-    SELECT 'Cyber Deadlift', 'Powerlifting', 'Back', 'Barbell', 'zap', 'Posterior chain recruitment and spinal stabilizer overload.' UNION ALL
-    SELECT 'Overclock Squats', 'Strength', 'Legs', 'Barbell', 'activity', 'High-voltage quadricep and glute hypertrophy activation.' UNION ALL
-    SELECT 'Neural Lat Pulldowns', 'Hypertrophy', 'Back', 'Cable', 'trending-up', 'Targeted lats latissimus dorsi mechanical contraction.' UNION ALL
-    SELECT 'Bionic Bicep Curls', 'Isolation', 'Arms', 'Dumbbell', 'shield', 'Peak bicep tension with alternating rotation lock.' UNION ALL
-    SELECT 'Tricep Plasma Pushdowns', 'Isolation', 'Arms', 'Cable', 'zap', 'Lockout tricep horseshoe development.' UNION ALL
-    SELECT 'Plasma Shoulder Press', 'Hypertrophy', 'Shoulders', 'Dumbbell', 'dumbbell', 'Deltoid kinetic press for cyber-silhouette width.' UNION ALL
-    SELECT 'Core Overdrive Planks', 'Endurance', 'Core', 'Bodyweight', 'shield', 'Isometric abdominal wall stabilizer endurance test.' UNION ALL
-    SELECT 'Hyperdrive HIIT Sprints', 'Cardio', 'Cardio', 'Treadmill', 'flame', 'Maximum VO2 surge protocol for mitochondrial acceleration.' UNION ALL
-    SELECT 'Titan Leg Press', 'Hypertrophy', 'Legs', 'Machine', 'activity', 'High-load closed kinetic chain leg press.'
-) AS tmp
-WHERE NOT EXISTS (SELECT 1 FROM `exercises` LIMIT 1);
+-- 4. USER METRICS & BMI TABLE
+CREATE TABLE IF NOT EXISTS `user_metrics` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `age` INT NOT NULL DEFAULT 25,
+    `height_cm` DECIMAL(6,2) NOT NULL DEFAULT 175.00,
+    `weight_kg` DECIMAL(6,2) NOT NULL DEFAULT 70.00,
+    `bmi_value` DECIMAL(4,1) NOT NULL DEFAULT 22.9,
+    `bmi_status` VARCHAR(50) NOT NULL DEFAULT 'Normal',
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. SEED DATA: SAMPLE PROTOCOL REMINDER
-INSERT INTO `reminders` (`title`, `time`, `days`, `sound`, `is_active`)
-SELECT '06:00 AM Hypertrophy Protocol', '06:00', 'Mon,Tue,Wed,Thu,Fri', 'cyber-siren', 1
-WHERE NOT EXISTS (SELECT 1 FROM `reminders` LIMIT 1);
+-- 5. USER PROFILE & APP PREFERENCES TABLE
+CREATE TABLE IF NOT EXISTS `user_profile` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `user_name` VARCHAR(100) NOT NULL DEFAULT 'Athlete',
+    `age` INT NOT NULL DEFAULT 25,
+    `fitness_goal` VARCHAR(100) NOT NULL DEFAULT 'Muscle Gain',
+    `preferred_unit` VARCHAR(20) NOT NULL DEFAULT 'metric',
+    `sound_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+    `sound_type` VARCHAR(50) NOT NULL DEFAULT 'modern-chime',
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================================
+-- NOTE: Automatic sample data seeding has been disabled.
+-- All database tables are created empty without auto-populating initial rows.
+-- Users will start with clean tables and populate them through the app.
+-- =====================================================================
+

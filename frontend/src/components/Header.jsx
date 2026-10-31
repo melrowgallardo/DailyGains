@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Activity, 
   Dumbbell, 
@@ -11,8 +11,7 @@ import {
   VolumeX, 
   Wifi, 
   WifiOff, 
-  Flame, 
-  Clock 
+  Plus 
 } from './icons';
 import { audio } from '../services/audioService';
 
@@ -26,24 +25,12 @@ export default function Header({
   setSoundMuted,
   openQuickLog
 }) {
-  const [timeStr, setTimeStr] = useState('');
-
-  useEffect(() => {
-    const update = () => {
-      const now = new Date();
-      setTimeStr(now.toLocaleTimeString('en-US', { hour12: false }));
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Activity },
-    { id: 'tracker', label: 'Workout Tracker', icon: Dumbbell },
-    { id: 'alarms', label: 'Alarms / Protocols', icon: Bell },
-    { id: 'analytics', label: 'Gains Analytics', icon: BarChart3 },
-    { id: 'settings', label: 'System Settings', icon: SettingsIcon },
+    { id: 'tracker', label: 'Tracker', icon: Dumbbell },
+    { id: 'alarms', label: 'Reminders', icon: Bell },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
   const handleNavClick = (tabId) => {
@@ -59,195 +46,212 @@ export default function Header({
   };
 
   return (
-    <header className="cyber-header" style={{
+    <header style={{
       borderBottom: '1px solid var(--border-subtle)',
       background: 'var(--bg-card)',
-      backdropFilter: 'blur(16px)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       position: 'sticky',
       top: 0,
       zIndex: 50,
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+      boxShadow: 'var(--shadow-sm)'
     }}>
-      <div className="container-hud" style={{ paddingBottom: '0', paddingTop: '12px' }}>
-        {/* Top Branding & Meta Bar */}
+      <div className="container-hud" style={{ paddingTop: '10px', paddingBottom: '10px' }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: '14px',
-          paddingBottom: '12px'
+          gap: '12px'
         }}>
-          {/* Logo & Identity */}
+          {/* Logo & Brand Identity */}
           <div 
             onClick={() => handleNavClick('dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer' }}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
           >
             <div style={{
-              position: 'relative',
-              width: '46px',
-              height: '46px',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              border: '2px solid var(--cyber-cyan)',
-              boxShadow: 'var(--shadow-neon-cyan)',
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-blue) 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              boxShadow: '0 2px 8px rgba(6, 182, 212, 0.35)',
               flexShrink: 0
             }}>
-              <img 
-                src="/logo.jpg" 
-                alt="DailyGains Logo" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
+              <Dumbbell size={20} />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="font-display" style={{
-                  fontSize: '1.45rem',
-                  fontWeight: 900,
-                  letterSpacing: '0.08em',
-                  background: 'linear-gradient(90deg, #ffffff 0%, var(--cyber-cyan) 60%, var(--cyber-orange) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  fontSize: '1.2rem',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: 'var(--text-main)'
                 }}>
-                  DAILYGAINS
+                  Daily<span style={{ color: 'var(--accent-cyan)' }}>Gains</span>
                 </span>
-                <span className="cyber-badge badge-orange font-mono" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
-                  HUD V2.0
+                <span style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  borderRadius: '9999px',
+                  background: 'var(--accent-cyan-light)',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  FITNESS
                 </span>
-              </div>
-              <div className="font-tech" style={{
-                fontSize: '0.78rem',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase'
-              }}>
-                CYBERTECH GYM WORKOUT & BIOMETRIC SYSTEM
               </div>
             </div>
           </div>
 
-          {/* System Telemetry & Control Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            {/* Live Clock */}
-            <div className="font-mono cyber-panel" style={{
-              padding: '6px 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.85rem',
-              color: 'var(--cyber-cyan)',
-              border: '1px solid rgba(0, 243, 255, 0.2)'
-            }}>
-              <Clock size={14} style={{ color: 'var(--cyber-cyan)' }} />
-              <span>{timeStr || '00:00:00'}</span>
-            </div>
+          {/* Center Navigation Bar with Clear Icon Labels */}
+          <nav style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            background: 'var(--bg-input)',
+            padding: '4px',
+            borderRadius: '12px',
+            border: '1px solid var(--border-subtle)',
+            overflowX: 'auto',
+            maxWidth: '100%'
+          }}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    background: isActive ? 'var(--bg-card)' : 'transparent',
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '0.85rem',
+                    fontWeight: isActive ? 600 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isActive ? 'var(--shadow-sm)' : 'none',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <Icon size={16} color={isActive ? 'var(--accent-cyan)' : 'currentColor'} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-            {/* DB Status Badge */}
+          {/* Right Controls: Status, Audio, Theme & Prominent "+ Add Workout" */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Database Connection Dot */}
             <div 
               onClick={() => handleNavClick('settings')}
-              title="Click to view database & API settings"
-              className={`cyber-badge ${isOnline ? 'badge-green' : 'badge-orange'}`}
-              style={{ padding: '6px 10px', cursor: 'pointer', fontSize: '0.75rem' }}
+              title={isOnline ? 'MySQL Connected' : 'Local Storage Mode'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 10px',
+                borderRadius: '9999px',
+                background: isOnline ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                border: `1px solid ${isOnline ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: isOnline ? '#10b981' : '#f59e0b',
+                cursor: 'pointer'
+              }}
             >
-              {isOnline ? (
-                <>
-                  <Wifi size={13} />
-                  <span>XAMPP MYSQL ONLINE</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff size={13} />
-                  <span>LOCAL OFFLINE MODE</span>
-                </>
-              )}
+              <div style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: isOnline ? '#10b981' : '#f59e0b',
+                boxShadow: isOnline ? '0 0 6px #10b981' : 'none'
+              }} />
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
             </div>
 
-            {/* Audio Toggle */}
+            {/* Sound Toggle */}
             <button 
               onClick={handleMuteToggle}
-              title={soundMuted ? 'Unmute Audio Synthesizer' : 'Mute Audio Synthesizer'}
-              className="cyber-btn cyber-btn-ghost cyber-btn-sm"
-              style={{ width: '36px', height: '36px', padding: 0 }}
+              title={soundMuted ? 'Unmute Audio' : 'Mute Audio'}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-input)',
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
             >
-              {soundMuted ? <VolumeX size={16} /> : <Volume2 size={16} style={{ color: 'var(--cyber-cyan)' }} />}
+              {soundMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
 
-            {/* Theme Toggle */}
+            {/* Theme Toggle (Dark / Light) */}
             <button 
               onClick={() => {
                 audio.playClick();
                 toggleTheme();
               }}
-              title={theme === 'dark' ? 'Switch to Lab Light Mode' : 'Switch to Cyberpunk Dark Mode'}
-              className="cyber-btn cyber-btn-ghost cyber-btn-sm"
-              style={{ width: '36px', height: '36px', padding: 0 }}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-input)',
+                color: theme === 'dark' ? 'var(--accent-amber)' : 'var(--accent-blue)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
             >
-              {theme === 'dark' ? (
-                <Sun size={16} style={{ color: 'var(--cyber-amber)' }} />
-              ) : (
-                <Moon size={16} style={{ color: 'var(--cyber-cyan)' }} />
-              )}
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
 
-            {/* Fast Quick Log CTA */}
+            {/* Prominent "+ Add Workout" Button */}
             {openQuickLog && (
               <button 
                 onClick={() => {
                   audio.playClick();
                   openQuickLog();
                 }}
-                className="cyber-btn cyber-btn-orange cyber-btn-sm font-display"
-                style={{ padding: '7px 14px' }}
+                className="cyber-btn cyber-btn-cyan"
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
               >
-                <Flame size={14} />
-                <span>+ LOG SET</span>
+                <Plus size={16} />
+                <span>+ Add Workout</span>
               </button>
             )}
           </div>
         </div>
-
-        {/* Navigation Tabs */}
-        <nav style={{
-          display: 'flex',
-          gap: '4px',
-          overflowX: 'auto',
-          paddingBottom: '2px',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 18px',
-                  background: isActive ? 'rgba(0, 243, 255, 0.1)' : 'transparent',
-                  color: isActive ? 'var(--cyber-cyan)' : 'var(--text-muted)',
-                  border: 'none',
-                  borderBottom: isActive ? '3px solid var(--cyber-cyan)' : '3px solid transparent',
-                  fontFamily: 'var(--font-tech)',
-                  fontSize: '0.92rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  whiteSpace: 'nowrap',
-                  borderRadius: '4px 4px 0 0'
-                }}
-              >
-                <Icon size={16} style={{ color: isActive ? 'var(--cyber-cyan)' : 'inherit' }} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
       </div>
     </header>
   );

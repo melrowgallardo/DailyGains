@@ -383,3 +383,43 @@ export const ArrowUpDown = createIcon('ArrowUpDown', (
     <path d="M7 4v16" />
   </>
 ));
+
+export const Scale = createIcon('Scale', (
+  <>
+    <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+    <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" />
+    <path d="M7 21h10" />
+    <path d="M12 3v18" />
+    <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" />
+  </>
+));
+
+export const Save = createIcon('Save', (
+  <>
+    <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+    <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+  </>
+));
+
+export const User = createIcon('User', (
+  <>
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
+  </>
+));
+
+export const Edit = createIcon('Edit', (
+  <>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </>
+));
+
+export const ChevronLeft = createIcon('ChevronLeft', (
+  <polyline points="15 18 9 12 15 6" />
+));
+
+export const ChevronRight = createIcon('ChevronRight', (
+  <polyline points="9 18 15 12 9 6" />
+));

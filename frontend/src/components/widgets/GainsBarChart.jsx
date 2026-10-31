@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
-import { BarChart3, Calendar, Zap, Layers } from '../icons';
+import { BarChart3 } from '../icons';
 import { audio } from '../../services/audioService';
 
 export default function GainsBarChart({ logs = [] }) {
-  const [metric, setMetric] = useState('volume'); // 'volume' | 'calories' | 'sets'
+  const [metric, setMetric] = useState('volume');
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
-  // Build 7-day data points (from 6 days ago up to today)
+  // Build 7-day data points
   const days = [];
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
-    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
     
-    // Filter logs on this date
     const dayLogs = logs.filter(l => l.logged_at && l.logged_at.slice(0, 10) === dateStr);
     
     let vol = 0;
@@ -42,44 +41,66 @@ export default function GainsBarChart({ logs = [] }) {
     });
   }
 
-  // Get max value for scaling
   const maxValue = Math.max(
     ...days.map(d => d[metric]),
     metric === 'volume' ? 5000 : metric === 'calories' ? 600 : 15
   );
 
   const getMetricColor = () => {
-    if (metric === 'volume') return { bar: '#00f3ff', glow: 'rgba(0, 243, 255, 0.5)', unit: 'KG' };
-    if (metric === 'calories') return { bar: '#ff6400', glow: 'rgba(255, 100, 0, 0.6)', unit: 'KCAL' };
-    return { bar: '#ffb700', glow: 'rgba(255, 183, 0, 0.5)', unit: 'SETS' };
+    if (metric === 'volume') return { bar: 'var(--accent-cyan)', unit: 'kg' };
+    if (metric === 'calories') return { bar: 'var(--accent-blue)', unit: 'kcal' };
+    return { bar: '#10b981', unit: 'sets' };
   };
 
   const metricInfo = getMetricColor();
 
   return (
-    <div className="cyber-panel cyber-corners" style={{ padding: '18px 20px' }}>
+    <div className="cyber-panel" style={{ padding: '22px 24px' }}>
       {/* Header with metric toggles */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '10px',
-        marginBottom: '16px'
+        gap: '12px',
+        marginBottom: '20px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BarChart3 size={18} style={{ color: metricInfo.bar }} />
-          <span className="font-display" style={{ fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.06em' }}>
-            7-DAY GAINS TELEMETRY
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'var(--accent-cyan-light)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--accent-cyan)',
+            flexShrink: 0
+          }}>
+            <BarChart3 size={18} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+              7-Day Workout Activity
+            </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+              Daily training volume and caloric burn trends
+            </p>
+          </div>
         </div>
 
         {/* Metric Switcher */}
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-card-solid)', padding: '2px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+        <div style={{
+          display: 'flex',
+          background: 'var(--bg-input)',
+          padding: '3px',
+          borderRadius: '10px',
+          border: '1px solid var(--border-subtle)'
+        }}>
           {[
-            { id: 'volume', label: 'VOLUME' },
-            { id: 'calories', label: 'CALORIES' },
-            { id: 'sets', label: 'SETS' }
+            { id: 'volume', label: 'Volume (kg)' },
+            { id: 'calories', label: 'Calories (kcal)' },
+            { id: 'sets', label: 'Total Sets' }
           ].map((m) => (
             <button
               key={m.id}
@@ -87,14 +108,17 @@ export default function GainsBarChart({ logs = [] }) {
                 audio.playClick();
                 setMetric(m.id);
               }}
-              className="cyber-btn cyber-btn-ghost cyber-btn-sm font-mono"
               style={{
-                padding: '4px 8px',
-                fontSize: '0.7rem',
+                padding: '5px 12px',
+                fontSize: '0.78rem',
                 border: 'none',
-                background: metric === m.id ? 'rgba(0, 243, 255, 0.15)' : 'transparent',
-                color: metric === m.id ? metricInfo.bar : 'var(--text-muted)',
-                fontWeight: metric === m.id ? 800 : 500
+                borderRadius: '7px',
+                cursor: 'pointer',
+                background: metric === m.id ? 'var(--bg-card)' : 'transparent',
+                color: metric === m.id ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                fontWeight: metric === m.id ? 600 : 500,
+                boxShadow: metric === m.id ? 'var(--shadow-sm)' : 'none',
+                transition: 'all 0.15s ease'
               }}
             >
               {m.label}
@@ -103,132 +127,113 @@ export default function GainsBarChart({ logs = [] }) {
         </div>
       </div>
 
-      {/* SVG Bar Chart */}
-      <div style={{ position: 'relative', width: '100%', height: '180px', marginTop: '10px' }}>
-        <svg viewBox="0 0 700 180" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-          {/* Horizontal Grid lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((pct, idx) => {
-            const y = 140 - pct * 120;
+      {/* SVG Responsive Bar Chart */}
+      <div style={{ position: 'relative', height: '170px', width: '100%' }}>
+        <svg
+          viewBox="0 0 700 170"
+          style={{ width: '100%', height: '100%', overflow: 'visible' }}
+          preserveAspectRatio="none"
+        >
+          {/* Subtle Horizontal gridlines */}
+          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+            const y = 140 - ratio * 120;
             return (
-              <g key={idx}>
-                <line 
-                  x1="30" 
-                  y1={y} 
-                  x2="680" 
-                  y2={y} 
-                  stroke="rgba(0, 243, 255, 0.08)" 
-                  strokeDasharray="4 4" 
-                />
-                <text 
-                  x="20" 
-                  y={y + 4} 
-                  fill="var(--text-dim)" 
-                  fontSize="11" 
-                  fontFamily="var(--font-mono)" 
-                  textAnchor="end"
-                >
-                  {Math.round(maxValue * pct)}
-                </text>
-              </g>
+              <line
+                key={ratio}
+                x1="40"
+                x2="680"
+                y1={y}
+                y2={y}
+                stroke="var(--border-subtle)"
+                strokeDasharray="4 4"
+                strokeWidth="1"
+              />
             );
           })}
 
-          {/* Bars */}
-          {days.map((d, idx) => {
-            const barWidth = 48;
+          {/* Render Bars for each day */}
+          {days.map((day, idx) => {
+            const barWidth = 44;
             const x = 70 + idx * 88;
-            const val = d[metric];
-            const height = (val / maxValue) * 120;
-            const y = 140 - height;
+            const barHeight = Math.max(6, (day[metric] / maxValue) * 120);
+            const y = 140 - barHeight;
             const isHovered = hoveredIdx === idx;
 
             return (
-              <g 
-                key={d.label}
+              <g
+                key={day.dateStr}
                 onMouseEnter={() => setHoveredIdx(idx)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{ cursor: 'pointer' }}
               >
-                {/* Background column highlight on hover */}
+                {/* Background Hover highlight */}
                 {isHovered && (
                   <rect
-                    x={x - 10}
-                    y={10}
-                    width={barWidth + 20}
-                    height={140}
-                    fill="rgba(0, 243, 255, 0.05)"
-                    rx="4"
+                    x={x - 12}
+                    y={15}
+                    width={barWidth + 24}
+                    height={130}
+                    fill="rgba(6, 182, 212, 0.05)"
+                    rx="8"
                   />
                 )}
 
-                {/* Main Bar with cyber gradient */}
+                {/* Primary Data Bar with smooth rounded corners */}
                 <rect
                   x={x}
                   y={y}
                   width={barWidth}
-                  height={Math.max(height, 4)}
-                  rx="3"
-                  fill={isHovered ? '#ffffff' : metricInfo.bar}
-                  fillOpacity={val > 0 ? (isHovered ? 1 : 0.85) : 0.15}
+                  height={barHeight}
+                  fill={isHovered ? 'var(--accent-blue)' : metricInfo.bar}
+                  rx="6"
                   style={{
-                    filter: val > 0 ? `drop-shadow(0 0 8px ${metricInfo.glow})` : 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    opacity: day[metric] > 0 ? (isHovered ? 1 : 0.9) : 0.25
                   }}
                 />
 
-                {/* Top cap glowing edge */}
-                {val > 0 && (
-                  <rect
-                    x={x}
-                    y={y}
-                    width={barWidth}
-                    height="3"
-                    rx="1.5"
-                    fill="#ffffff"
-                  />
-                )}
-
-                {/* Day label */}
+                {/* Day of Week Label */}
                 <text
                   x={x + barWidth / 2}
-                  y="162"
+                  y={160}
                   textAnchor="middle"
-                  fill={d.isToday ? 'var(--cyber-cyan)' : 'var(--text-muted)'}
+                  fill={day.isToday ? 'var(--accent-cyan)' : 'var(--text-muted)'}
                   fontSize="12"
-                  fontFamily="var(--font-tech)"
-                  fontWeight={d.isToday ? '800' : '600'}
+                  fontWeight={day.isToday ? '700' : '500'}
+                  fontFamily="var(--font-sans)"
                 >
-                  {d.label}
+                  {day.label}
                 </text>
+
+                {/* Top value on hover */}
+                {isHovered && (
+                  <g>
+                    <rect
+                      x={x + barWidth / 2 - 38}
+                      y={Math.max(5, y - 26)}
+                      width="76"
+                      height="22"
+                      rx="6"
+                      fill="var(--bg-card)"
+                      stroke="var(--border-subtle)"
+                    />
+                    <text
+                      x={x + barWidth / 2}
+                      y={Math.max(5, y - 26) + 15}
+                      textAnchor="middle"
+                      fill="var(--text-main)"
+                      fontSize="11"
+                      fontWeight="700"
+                      fontFamily="var(--font-sans)"
+                    >
+                      {day[metric].toLocaleString()} {metricInfo.unit}
+                    </text>
+                  </g>
+                )}
               </g>
             );
           })}
         </svg>
-
-        {/* Hover Floating Tooltip */}
-        {hoveredIdx !== null && (
-          <div style={{
-            position: 'absolute',
-            top: '8px',
-            right: '12px',
-            background: 'var(--bg-card-solid)',
-            border: `1px solid ${metricInfo.bar}`,
-            borderRadius: '6px',
-            padding: '6px 12px',
-            boxShadow: `0 0 12px ${metricInfo.glow}`,
-            pointerEvents: 'none'
-          }}>
-            <div className="font-tech" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {days[hoveredIdx].dateStr} ({days[hoveredIdx].label})
-            </div>
-            <div className="font-display" style={{ fontSize: '1rem', color: metricInfo.bar, fontWeight: 800 }}>
-              {days[hoveredIdx][metric].toLocaleString()} {metricInfo.unit}
-            </div>
-            <div className="font-tech" style={{ fontSize: '0.72rem', color: 'var(--cyber-green)' }}>
-              {days[hoveredIdx].exercisesCount} EXERCISES LOGGED
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
